@@ -8,6 +8,9 @@ module tb_bcd_to_7seg;
     
     // Variabile pentru verificare
     integer i;
+    integer choice;
+    integer user_input;
+    integer status;
     reg [6:0] expected_patterns [0:15];
     integer errors = 0;
 
@@ -17,13 +20,8 @@ module tb_bcd_to_7seg;
         .seg_out(seg_out)
     );
 
-    // Definire Culori ANSI pentru consola
-    localparam string RED   = "\033[1;31m";
-    localparam string GREEN = "\033[1;32m";
-    localparam string RESET = "\033[0m";
-    localparam string BOLD  = "\033[1m";
 
-    // Initializare modele asteptate (Golden Model) pentru verificare automata
+    // Initializare modele asteptate pentru verificare automata
     initial begin
         expected_patterns[0] = 7'b0111111; expected_patterns[1] = 7'b0000110;
         expected_patterns[2] = 7'b1011011; expected_patterns[3] = 7'b1001111;
@@ -35,36 +33,76 @@ module tb_bcd_to_7seg;
     end
 
     initial begin
-        $display("%s\n=============================================", BOLD);
+        $display("\n=============================================");
         $display("   SIMULARE DIGITALA AFISAJ 7 SEGMENTE   ");
-        $display("=============================================%s", RESET);
+        $display("=============================================");
+        $display("Alege modul de functionare:");
+        $display("  1 - Testbench automat (0-9)");
+        $display("  2 - Introducere manuala");
+        $display("=============================================");
+        $write("Introdu alegerea ta (1 sau 2): ");
+        
+        status = $fscanf(32'h8000_0000, "%d", choice);
+        
+        if (choice == 1) begin
+            // Mod Testbench Automat
+            $display("\n>>> Rulare testbench automat...\n");
+            
+            for (i = 0; i <= 9; i = i + 1) begin
+                bcd_in = i;
+                #10;
 
-        for (i = 0; i <= 9; i = i + 1) begin
-            bcd_in = i;
-            #10; // Asteapta propagarea
+                if (seg_out === expected_patterns[i]) begin
+                    $display("Test %0d: Input %b -> Output %b [PASS]", 
+                             i, i[3:0], seg_out);
+                end else begin
+                    $display("Test %0d: Input %b -> Output %b [FAIL] (Expected %b)", 
+                             i, i[3:0], seg_out, expected_patterns[i]);
+                    errors = errors + 1;
+                end
 
-            // 1. Verificare Automata (Self-Checking)
-            if (seg_out === expected_patterns[i]) begin
-                $display("Test %0d: Input %b -> Output %b %s[PASS]%s", 
-                         i, i[3:0], seg_out, GREEN, RESET);
-            end else begin
-                $display("Test %0d: Input %b -> Output %b %s[FAIL] (Expected %b)%s", 
-                         i, i[3:0], seg_out, RED, expected_patterns[i], RESET);
-                errors = errors + 1;
+                draw_digit(seg_out);
+                #100;
             end
 
-            // 2. Desenare UI Simulat
-            draw_digit(seg_out);
-            #100; // Pauza mica intre afisari
+            $display("\n=============================================");
+            if (errors == 0)
+                $display("TOATE TESTELE AU TRECUT CU SUCCES!");
+            else
+                $display("S-AU GASIT %0d ERORI!", errors);
+            $display("=============================================\n");
+            
+        end else if (choice == 2) begin
+            // Mod Input Manual
+            $display("\n>>> Mod introducere manuala");
+            $display("Introdu cifre de la 0 la 9 (sau -1 pentru iesire)\n");
+            
+            user_input = 0;
+            while (user_input != -1) begin
+                $write("Introdu cifra BCD (0-9, sau -1 pt iesire): ");
+                status = $fscanf(32'h8000_0000, "%d", user_input);
+                
+                if (user_input >= 0 && user_input <= 9) begin
+                    bcd_in = user_input;
+                    #10;
+                    
+                    $display("\nAfisaj pentru cifra %0d:", user_input);
+                    $display("Output binar: %b", seg_out);
+                    draw_digit(seg_out);
+                    #50;
+                end else if (user_input != -1) begin
+                    $display("EROARE: Introdu doar cifre intre 0-9!\n");
+                end
+            end
+            
+            $display("\n=============================================");
+            $display("Simulare incheiata!");
+            $display("=============================================\n");
+            
+        end else begin
+            $display("\nAlegere invalida! Inchidere simulare.\n");
         end
-
-        // Rezultat final
-        $display("\n=============================================");
-        if (errors == 0)
-            $display("%sTOATE TESTELE AU TRECUT CU SUCCES!%s", GREEN, RESET);
-        else
-            $display("%sS-AU GASIT %0d ERORI!%s", RED, errors, RESET);
-        $display("=============================================\n");
+        
         $finish;
     end
 
@@ -76,22 +114,22 @@ module tb_bcd_to_7seg;
             
             // Linia 1 (Segment A)
             $write("      ");
-            if(s[0]) $write("%s _ %s", RED, RESET); 
+            if(s[0]) $write(" _ "); 
             else     $write("   "); 
             $write("\n");
 
             // Linia 2 (Segmente F, G, B)
             $write("     ");
-            if(s[5]) $write("%s|%s", RED, RESET); else $write(" ");
-            if(s[6]) $write("%s_%s", RED, RESET); else $write(" ");
-            if(s[1]) $write("%s|%s", RED, RESET); else $write(" ");
+            if(s[5]) $write("|"); else $write(" ");
+            if(s[6]) $write("_"); else $write(" ");
+            if(s[1]) $write("|"); else $write(" ");
             $write("\n");
 
             // Linia 3 (Segmente E, D, C)
             $write("     ");
-            if(s[4]) $write("%s|%s", RED, RESET); else $write(" ");
-            if(s[3]) $write("%s_%s", RED, RESET); else $write(" ");
-            if(s[2]) $write("%s|%s", RED, RESET); else $write(" ");
+            if(s[4]) $write("|"); else $write(" ");
+            if(s[3]) $write("_"); else $write(" ");
+            if(s[2]) $write("|"); else $write(" ");
             $write("\n\n");
         end
     endtask

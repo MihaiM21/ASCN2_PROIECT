@@ -1,9 +1,3 @@
-/* * Modul: BCD to 7-Segment Decoder
- * Autor: [Numele Tau]
- * Descriere: Convertor BCD (0-9) la 7 segmente cu protectie la erori.
- * Include parametru pentru polaritate (Active High/Low).
- */
-
 module bcd_to_7seg #(
     parameter ACTIVE_LOW = 0 // 0 = Active High (LED aprins la 1), 1 = Active Low
 )(
@@ -12,7 +6,7 @@ module bcd_to_7seg #(
 );
 
     reg [6:0] segments_raw;
-
+ 
     // Logica de decodare (Standard Truth Table)
     // Format: g f e d c b a
     always @(*) begin
